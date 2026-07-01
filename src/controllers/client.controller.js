@@ -26,7 +26,7 @@ export const addClient = asyncHandler(async (req, res) => {
     .json(new apiResponse(201, client, "Client successfully added"));
 });
 
-export const gstClients = asyncHandler(async (req, res) => {
+export const getAllClients = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
 
   const allClients = await Client.find({ userId });
