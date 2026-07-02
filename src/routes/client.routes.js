@@ -4,5 +4,7 @@ import { addClient, getAllClients } from "../controllers/client.controller";
 
 const clientRouter = express.Router();
 
-clientRouter.post("/api/v1/client/addClient", verifyJwtToken, addClient);
-clientRouter.get("/api/v1/client/getAllClients", verifyJwtToken, getAllClients);
+clientRouter.post("/addClient", verifyJwtToken, addClient);
+clientRouter.get("/getAllClients", verifyJwtToken, getAllClients);
+
+export default clientRouter;

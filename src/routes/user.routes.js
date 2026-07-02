@@ -3,5 +3,7 @@ import { userLogin, userRegister } from "../controllers/user.controller";
 
 const userRouter = express.Router();
 
-userRouter.post("/api/v1/user/register", userRegister);
-userRouter.post("/api/v1/user/login", userLogin);
+userRouter.post("/register", userRegister);
+userRouter.post("/login", userLogin);
+
+export default userRouter;
