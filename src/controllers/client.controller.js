@@ -1,7 +1,7 @@
-import { Client } from "../models/Client";
-import { apiError } from "../utils/apiError";
-import { apiResponse } from "../utils/apiResponse";
-import { asyncHandler } from "../utils/asyncHandler";
+import { Client } from "../models/Client.js";
+import { apiError } from "../utils/apiError.js";
+import { apiResponse } from "../utils/apiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const addClient = asyncHandler(async (req, res) => {
   const { clientName, email, phone, gstin, address, state } = req.body;

@@ -5,7 +5,7 @@ import { connectDb } from "./src/db/connectDB.js";
 
 const PORT = 3000;
 
-connectDb
+connectDb()
   .then(() => {
     app.listen(PORT, () => {
       console.log("Server is running on Port", PORT);

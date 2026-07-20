@@ -1,6 +1,6 @@
 import express from "express";
-import { verifyJwtToken } from "../middlewares/auth.middleware";
-import { addClient, getAllClients } from "../controllers/client.controller";
+import { verifyJwtToken } from "../middlewares/auth.middleware.js";
+import { addClient, getAllClients } from "../controllers/client.controller.js";
 
 const clientRouter = express.Router();
 
