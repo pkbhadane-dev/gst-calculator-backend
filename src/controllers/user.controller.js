@@ -11,6 +11,8 @@ const generateAccessAndRefreshToken = async (user) => {
 
     user.refreshToken = refreshToken;
     await user.save({ validationBeforeSave: false });
+    console.log("1 accessToken===", accessToken);
+    console.log("2 refreshToen===", refreshToken);
 
     return { accessToken, refreshToken };
   } catch (error) {
@@ -73,7 +75,14 @@ export const userLogin = asyncHandler(async (req, res) => {
   const loggedInUser = user.toObject();
   delete loggedInUser.password;
 
-  const options = {
+  const accessTokenOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000,
+  };
+
+  const refreshTokenOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -81,7 +90,8 @@ export const userLogin = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .cookie("accessToken", accessToken, options)
+    .cookie("accessToken", accessToken, accessTokenOptions)
+    .cookie("refreshToken", refreshToken, refreshTokenOptions)
     .json(
       new apiResponse(
         201,
@@ -89,6 +99,28 @@ export const userLogin = asyncHandler(async (req, res) => {
         "User login successfully",
       ),
     );
+});
+
+export const userLogout = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  await User.findByIdAndUpdate(
+    userId,
+    { $unset: { refreshToken: 1 } },
+    { new: true },
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  };
+
+  res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new apiResponse(200, {}, "Logout Successfull"));
 });
 
 export const getUser = asyncHandler(async (req, res) => {
@@ -108,24 +140,40 @@ export const getUser = asyncHandler(async (req, res) => {
 
 export const refreshAccessToken = asyncHandler(async (req, res) => {
   const token = req.cookies.refreshToken;
+  // console.log("token", token);
 
-  if (token) {
+  if (!token) {
     throw new apiError(404, "refresh token not found");
   }
 
   const verifiedToken = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
 
+  // console.log("verifiedToken", verifiedToken);
+
   const userId = verifiedToken._id;
 
-  const user = await User.findById(userId).select("-password");
+  const user = await User.findById(userId);
+
+  console.log(token === user.refreshToken);
+
+  console.log("3 Token===", token);
+  console.log("4 user.refreshoken===", user.refreshToken);
 
   if (token !== user.refreshToken) {
     throw new apiError(401, "Refresh token expire");
   }
 
-  const { refreshToken, accessToken } = generateAccessAndRefreshToken(user);
-
+  const { refreshToken, accessToken } =
+    await generateAccessAndRefreshToken(user);
+  // console.log("Generated Token", accessToken);
   const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000,
+  };
+
+  const refreshTokenOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -134,7 +182,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("refreshToken", refreshToken, refreshTokenOptions)
     .json(
       new apiResponse(
         200,

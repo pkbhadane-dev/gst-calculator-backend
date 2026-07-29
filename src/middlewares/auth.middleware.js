@@ -17,6 +17,8 @@ export const verifyJwtToken = asyncHandler(async (req, res, next) => {
     req.user = verifiedToken;
     next();
   } catch (error) {
+    console.log(error);
+
     console.log(error.message || "invalid token");
     throw new apiError(401, error.message || "invalid token");
   }
