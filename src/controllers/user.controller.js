@@ -11,8 +11,8 @@ const generateAccessAndRefreshToken = async (user) => {
 
     user.refreshToken = refreshToken;
     await user.save({ validationBeforeSave: false });
-    console.log("1 accessToken===", accessToken);
-    console.log("2 refreshToen===", refreshToken);
+    // console.log("1 accessToken===", accessToken);
+    // console.log("2 refreshToen===", refreshToken);
 
     return { accessToken, refreshToken };
   } catch (error) {
@@ -125,13 +125,13 @@ export const userLogout = asyncHandler(async (req, res) => {
 
 export const getUser = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  console.log(userId);
+  // console.log(userId);
   if (!userId) {
     throw new apiError(404, "User Not Found");
   }
 
   const user = await User.findById(userId).select("-password");
-  console.log("user", user);
+  // console.log("user", user);
 
   return res
     .status(200)
@@ -151,13 +151,10 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
   // console.log("verifiedToken", verifiedToken);
 
   const userId = verifiedToken._id;
-
   const user = await User.findById(userId);
 
-  console.log(token === user.refreshToken);
-
-  console.log("3 Token===", token);
-  console.log("4 user.refreshoken===", user.refreshToken);
+  // console.log("3 Token===", token);
+  // console.log("4 user.refreshoken===", user.refreshToken);
 
   if (token !== user.refreshToken) {
     throw new apiError(401, "Refresh token expire");
@@ -165,7 +162,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
 
   const { refreshToken, accessToken } =
     await generateAccessAndRefreshToken(user);
-  // console.log("Generated Token", accessToken);
+
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -179,7 +176,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     sameSite: "lax",
   };
 
-  return res
+  res
     .status(200)
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, refreshTokenOptions)

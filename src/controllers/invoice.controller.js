@@ -3,7 +3,8 @@ import { Client } from "../models/Client.js";
 import { Invoice } from "../models/Invoice.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-
+import { apiError } from "../utils/apiError.js";
+import mongoose from "mongoose";
 
 export const createInvoice = asyncHandler(async (req, res) => {
   const { invoiceNumber, clientId, items } = req.body;
@@ -70,4 +71,52 @@ export const createInvoice = asyncHandler(async (req, res) => {
   return res
     .status(201)
     .json(new apiResponse(201, invoice, "Invoice created successfully"));
+});
+
+export const getAllInvoices = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  if (!userId) {
+    throw new apiError(401, "User not authenticated");
+  }
+
+  const allInvoices = await Invoice.aggregate([
+    {
+      $match: { userId: new mongoose.Types.ObjectId(userId) },
+    },
+    {
+      $lookup: {
+        from: "clients",
+        localField: "clientId",
+        foreignField: "_id",
+        as: "clientDetail",
+        pipeline: [
+          {
+            $project: {
+              clientName: 1,
+              state: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        client: {
+          $first: "$clientDetail",
+        },
+      },
+    },
+    {
+      $unset:"clientDetail"
+    }
+  ]);
+
+  console.log("allInvoices", allInvoices);
+
+  res
+    .status(200)
+    .json(
+      new apiResponse(200, allInvoices, "All invoices fetched successfully"),
+    );
 });

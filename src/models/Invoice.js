@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const invoiceSchema = new mongoose.Schema({
   invoiceNumber: {
-    type: Number,
+    type: String,
     unique: true,
     required: true,
   },
