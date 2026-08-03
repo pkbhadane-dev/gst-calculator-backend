@@ -4,7 +4,7 @@ import { Invoice } from "../models/Invoice.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 
 export const createInvoice = asyncHandler(async (req, res) => {
   const { invoiceNumber, clientId, items } = req.body;
@@ -108,15 +108,66 @@ export const getAllInvoices = asyncHandler(async (req, res) => {
       },
     },
     {
-      $unset:"clientDetail"
-    }
+      $unset: "clientDetail",
+    },
   ]);
 
-  console.log("allInvoices", allInvoices);
+  // console.log("allInvoices", allInvoices);
 
   res
     .status(200)
     .json(
       new apiResponse(200, allInvoices, "All invoices fetched successfully"),
     );
+});
+
+export const getInvoiceById = asyncHandler(async (req, res) => {
+  const { invoiceId } = req.params;
+  const userId = req.user._id;
+
+  if (!isValidObjectId(invoiceId)) {
+    throw new apiError(400, "Invalid invoiceId");
+  }
+
+  const invoice = await Invoice.aggregate([
+    {
+      $match: { _id: new mongoose.Types.ObjectId(invoiceId) },
+    },
+    {
+      $lookup: {
+        from: "clients",
+        localField: "clientId",
+        foreignField: "_id",
+        as: "clientDetail",
+        pipeline: [
+          {
+            $project: {
+              clientName: 1,
+              state: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        client: {
+          $first: "$clientDetail",
+        },
+      },
+    },
+    {
+      $unset: "clientDetail",
+    },
+  ]);
+
+  console.log(invoice[0].userId);
+
+  if (userId !== invoice[0].userId.toString()) {
+    throw new apiError(400, "User and Invoice-user are not matched");
+  }
+
+  res
+    .status(200)
+    .json(new apiResponse(200, invoice[0], "Invoice fetched successfully"));
 });

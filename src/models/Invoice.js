@@ -60,6 +60,9 @@ const invoiceSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+},
+{
+  timestamps: true
 });
 
 export const Invoice = mongoose.model("Invoice", invoiceSchema);
