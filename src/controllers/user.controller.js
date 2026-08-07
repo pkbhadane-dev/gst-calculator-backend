@@ -1,18 +1,23 @@
+import mongoose from "mongoose";
 import { User } from "../models/User.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
+import { Invoice } from "../models/Invoice.js";
 
 const generateAccessAndRefreshToken = async (user) => {
   try {
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
-    user.refreshToken = refreshToken;
-    await user.save({ validationBeforeSave: false });
-    // console.log("1 accessToken===", accessToken);
-    // console.log("2 refreshToen===", refreshToken);
+    await User.findByIdAndUpdate(
+      user._id,
+      { $set: { refreshToken: refreshToken } },
+      { new: true },
+    );
+    console.log("1 accessToken===", accessToken);
+    console.log("2 refreshToen===", refreshToken);
 
     return { accessToken, refreshToken };
   } catch (error) {
@@ -86,6 +91,7 @@ export const userLogin = asyncHandler(async (req, res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
+    maxAge: 10 * 24 * 60 * 60 * 1000,
   };
 
   return res
@@ -153,8 +159,8 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
   const userId = verifiedToken._id;
   const user = await User.findById(userId);
 
-  // console.log("3 Token===", token);
-  // console.log("4 user.refreshoken===", user.refreshToken);
+  console.log("3 Token===", token);
+  console.log("4 user.refreshoken===", user.refreshToken);
 
   if (token !== user.refreshToken) {
     throw new apiError(401, "Refresh token expire");
@@ -174,6 +180,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
+    maxAge: 10 * 24 * 60 * 60 * 1000,
   };
 
   res
@@ -185,6 +192,70 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
         200,
         { refreshToken, accessToken },
         "token generated successfully",
+      ),
+    );
+});
+
+export const getDashboardData = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  const dashboardData = await User.aggregate([
+    {
+      $match: { _id: new mongoose.Types.ObjectId(userId) },
+    },
+    {
+      $facet: {
+        clientData: [
+          {
+            $lookup: {
+              from: "clients",
+              localField: "_id",
+              foreignField: "userId",
+              as: "client",
+              pipeline: [
+                {
+                  $group: {
+                    _id: null,
+                    totalClients: { $sum: 1 },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        invoiceData: [
+          {
+            $lookup: {
+              from: "invoices",
+              localField: "_id",
+              foreignField: "userId",
+              as: "invoice",
+              pipeline: [
+                {
+                  $group: {
+                    _id: null,
+                    totalInvoices: { $sum: 1 },
+                    totalRevenue: { $sum: "$grandTotal" },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const totalClients = dashboardData[0].clientData[0].client[0];
+  const invoiceDetail = dashboardData[0].invoiceData[0].invoice[0];
+
+  res
+    .status(200)
+    .json(
+      new apiResponse(
+        200,
+        { totalClients, invoiceDetail },
+        "Dashboard data fetched successfully",
       ),
     );
 });
